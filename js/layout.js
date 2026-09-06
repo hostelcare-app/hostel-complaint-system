@@ -1,9 +1,10 @@
 (function (global) {
   function renderSidebar(activePage, user) {
-    const links = [
-      { href: "dashboard.html", label: "Dashboard", page: "dashboard" },
-      { href: "submit-complaint.html", label: "Submit complaint", page: "submit" },
-    ];
+    const isAdmin = user.role === "admin";
+    const links = [{ href: "dashboard.html", label: "Dashboard", page: "dashboard" }];
+    if (!isAdmin) {
+      links.push({ href: "submit-complaint.html", label: "Submit complaint", page: "submit" });
+    }
     const linkHtml = links
       .map(function (l) {
         const cls = l.page === activePage ? "active" : "";
@@ -11,12 +12,15 @@
       })
       .join("");
 
+    const sidebarEl = document.getElementById("sidebar");
+    if (sidebarEl && isAdmin) sidebarEl.classList.add("sidebar-admin");
+
     return (
       '<a class="brand-mark" href="dashboard.html"><span class="brand-dot"></span>Hostel Care</a>' +
       '<ul class="nav-links">' + linkHtml + "</ul>" +
       '<div class="sidebar-user">' +
         '<div class="name">' + escapeHtml(user.name) + "</div>" +
-        '<div class="role">' + escapeHtml(user.role) + "</div>" +
+        '<div class="role' + (isAdmin ? " role-admin" : "") + '">' + (isAdmin ? "Warden / Admin" : escapeHtml(user.role)) + "</div>" +
         '<button class="btn btn-danger-text btn-sm" id="logoutBtn" type="button">Log out</button>' +
       "</div>"
     );
