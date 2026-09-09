@@ -1,9 +1,12 @@
-  1<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard · Hostel Care</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1E2761">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
@@ -14,10 +17,13 @@
   <main class="main">
     <div class="main-header">
       <div>
-        <h1 id="pageTitle">Dashboard</h1>
+        <div class="title-row">
+          <h1 id="pageTitle">Dashboard</h1>
+          <span class="pill pill-admin" id="adminBadge" style="display:none;">Warden Access</span>
+        </div>
         <p id="pageSubtitle"></p>
       </div>
-      <a href="submit-complaint.html" class="btn btn-primary">Submit a complaint</a>
+      <a href="submit-complaint.html" class="btn btn-primary" id="newComplaintBtn">Submit a complaint</a>
     </div>
 
     <div class="stat-row" id="statRow"></div>
@@ -47,9 +53,14 @@
     const isAdmin = user.role === "admin";
     document.getElementById("pageTitle").textContent = isAdmin ? "Admin dashboard" : "Hi, " + user.name.split(" ")[0];
     document.getElementById("pageSubtitle").textContent = isAdmin
-      ? "Every complaint filed across the hostel, newest first."
+      ? "Every complaint filed across the hostel — resolve them here."
       : "Here's what's happening with the issues you've reported.";
     document.getElementById("panelTitle").textContent = isAdmin ? "All complaints" : "Your complaints";
+
+    if (isAdmin) {
+      document.getElementById("newComplaintBtn").style.display = "none";
+      document.getElementById("adminBadge").style.display = "inline-flex";
+    }
 
     const statusFilter = document.getElementById("statusFilter");
     if (isAdmin) statusFilter.style.display = "inline-block";
@@ -119,7 +130,8 @@
           return (
             "<tr>" +
             '<td class="ticket-no">' + c.ticketNo + "</td>" +
-            '<td class="ticket-title-cell"><a href="complaint.html?id=' + c.id + '">' + Layout.escapeHtml(c.title) + "</a></td>" +
+            '<td class="ticket-title-cell"><a href="complaint.html?id=' + c.id + '">' + Layout.escapeHtml(c.title) + "</a>" +
+            (c.photo ? ' <span title="Photo attached">📷</span>' : "") + "</td>" +
             studentCell +
             '<td><span class="pill pill-category">' + c.category + "</span></td>" +
             '<td><span class="pill pill-' + c.priority + '">' + priorityLabel(c.priority) + "</span></td>" +
@@ -140,6 +152,10 @@
 
     statusFilter.addEventListener("change", renderTable);
     renderTable();
+  }
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js");
   }
 </script>
 </body>
