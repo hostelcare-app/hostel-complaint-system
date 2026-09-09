@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Complaint · Hostel Care</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1E2761">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
@@ -77,7 +80,15 @@
 
       html += '<h3 style="font-size:1rem;margin-bottom:0.5em;">Description</h3><p class="description-block">' + Layout.escapeHtml(complaint.description) + "</p>";
 
-      html += '<h3 style="font-size:1rem;margin-bottom:0.3em;">AI classification confidence</h3>';
+      if (complaint.photo) {
+        html += '<h3 style="font-size:1rem;margin-bottom:0.5em;">Photo evidence</h3>';
+        html += '<img src="' + complaint.photo + '" class="photo-evidence" alt="Photo attached to complaint">';
+        if (complaint.photoLabel) {
+          html += '<p class="field-hint">🤖 Photo analysis detected: ' + Layout.escapeHtml(complaint.photoLabel) + " (" + complaint.photoConfidence + "% match)</p>";
+        }
+      }
+
+      html += '<h3 style="font-size:1rem;margin-bottom:0.3em;margin-top:1.2em;">AI classification confidence</h3>';
       html += '<div class="confidence-bar"><span style="width:' + complaint.confidence + '%"></span></div>';
       html += '<p class="field-hint">' + complaint.confidence + "% confident in this category and priority.</p>";
 
@@ -88,6 +99,7 @@
       }
 
       if (isAdmin) {
+        const suggestedWorker = complaint.assignedWorker || Store.suggestWorkerForCategory(complaint.category);
         html += '<hr class="divider"><h3 style="font-size:1rem;margin-bottom:0.8em;">Manage this ticket</h3>';
         html += '<form id="manageForm">';
         html += '<div class="field-row">';
@@ -95,8 +107,10 @@
           ["open", "in_progress", "resolved"].map((s) => '<option value="' + s + '"' + (s === complaint.status ? " selected" : "") + '>' + statusLabel(s) + "</option>").join("") +
           "</select></div>";
         html += '<div class="field"><label for="workerSelect">Assign worker</label><select id="workerSelect"><option value="">Not assigned</option>' +
-          Store.WORKERS.map((w) => '<option value="' + w + '"' + (w === complaint.assignedWorker ? " selected" : "") + '>' + w + "</option>").join("") +
-          "</select></div>";
+          Store.WORKERS.map((w) => '<option value="' + w + '"' + (w === suggestedWorker ? " selected" : "") + '>' + w + "</option>").join("") +
+          "</select>" +
+          (!complaint.assignedWorker ? '<p class="field-hint">🤖 AI-suggested based on category — change if needed.</p>' : "") +
+          "</div>";
         html += "</div>";
         html += '<div class="field"><label for="notesInput">Resolution notes</label><textarea id="notesInput" placeholder="What was done to fix this?">' + Layout.escapeHtml(complaint.resolutionNotes || "") + "</textarea></div>";
         html += '<button type="submit" class="btn btn-primary">Save changes</button>';
@@ -124,6 +138,10 @@
         });
       }
     }
+  }
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js");
   }
 </script>
 </body>
