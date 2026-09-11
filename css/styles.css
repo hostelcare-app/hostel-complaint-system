@@ -354,6 +354,28 @@ ul{ margin:0; padding:0; }
   .sidebar{ width:100%; flex-direction:row; flex-wrap:wrap; align-items:center; padding: 1em 1.2em; gap:0.9em 1.4em; }
   .sidebar .brand-mark{ margin-bottom:0; flex: 1 0 100%; white-space:nowrap; }
   .nav-links{ flex-direction:row; flex:none; }
-  .sidebar-user{ display:none; }
+
+  /* Keep the logout button reachable on mobile instead of hiding it
+     entirely — only hide the name/role text to save space, and push
+     the button to the end of the row. */
+  .sidebar-user{
+    display: flex;
+    align-items: center;
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+    margin-left: auto;
+  }
+  .sidebar-user .name,
+  .sidebar-user .role{
+    display: none;
+  }
+  .sidebar-user .btn-danger-text{
+    padding: 0.45em 1em;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: var(--radius-s);
+    color: #fff;
+  }
+
   .main{ padding: 1.6em 5vw; }
 }
