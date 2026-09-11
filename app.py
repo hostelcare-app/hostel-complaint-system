@@ -219,7 +219,9 @@ def init_db():
                 role='admin'
             )
             db.session.add(admin)
+db.session.commit()
 
-        db.session.commit()
+init_db()
 
- init_db() if __name__ == '__main__': app.run(debug=True, port=5000)
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
