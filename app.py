@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
 import json
@@ -11,10 +12,22 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hostel_complaints.db'
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Image upload settings
+app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5 MB max
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 db = SQLAlchemy(app)
 
 # Load AI classifier
 classifier = ComplaintClassifier()
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # Database Models
 class User(db.Model):
@@ -39,6 +52,7 @@ class Complaint(db.Model):
     resolved_at = db.Column(db.DateTime)
     resolution_notes = db.Column(db.Text)
     ai_confidence = db.Column(db.Float)  # AI model confidence score
+    image_filename = db.Column(db.String(255))  # optional attached photo
 
 # Routes
 @app.route('/')
@@ -141,6 +155,15 @@ def submit_complaint():
             ai_confidence=confidence
         )
 
+        # Handle optional image upload
+        image_file = request.files.get('image')
+        if image_file and image_file.filename and allowed_file(image_file.filename):
+            filename = secure_filename(image_file.filename)
+            # prefix with timestamp to avoid overwriting files with the same name
+            unique_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
+            image_file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+            complaint.image_filename = unique_filename
+
         db.session.add(complaint)
         db.session.commit()
 
@@ -219,7 +242,9 @@ def init_db():
                 role='admin'
             )
             db.session.add(admin)
-db.session.commit()
+
+        db.session.commit()
+
 
 init_db()
 
