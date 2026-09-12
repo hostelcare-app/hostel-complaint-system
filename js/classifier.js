@@ -9,14 +9,49 @@
 */
 (function (global) {
   const CATEGORY_KEYWORDS = {
-    Plumber: ["water", "tap", "leak", "pipe", "drain", "toilet", "flush", "bathroom", "shower", "sink", "seepage"],
-    Electrician: ["wire", "wiring", "switch", "socket", "light", "bulb", "fan", "plug", "electric", "electricity", "wifi", "router", "ac", "cooler", "shock", "spark"],
-    Carpenter: ["chair", "table", "bed", "mattress", "cupboard", "wardrobe", "almirah", "shelf", "desk", "lock", "door", "window", "wall", "ceiling", "crack", "roof", "floor", "paint", "plaster"],
-    Mess: ["food", "mess", "dining", "canteen", "meal", "breakfast", "lunch", "dinner", "kitchen", "hygiene", "cockroach", "insect", "spoiled", "stale", "chef", "cook"],
+    Plumber: [
+      "water", "tap", "taps", "faucet", "leak", "leaking", "leakage", "pipe", "pipes",
+      "drain", "drainage", "clog", "clogged", "blocked", "toilet", "flush", "flushing",
+      "bathroom", "washroom", "shower", "sink", "basin", "seepage", "overflow",
+      "overflowing", "dripping", "drip", "geyser", "hot water", "no water",
+      "water supply", "wet floor", "commode", "pipeline", "valve", "wc"
+    ],
+    Electrician: [
+      "wire", "wires", "wiring", "switch", "switches", "socket", "sockets",
+      "light", "lights", "bulb", "bulbs", "tube light", "fan", "fans", "plug",
+      "electric", "electrical", "electricity", "power", "power cut", "power supply",
+      "wifi", "wi-fi", "internet", "router", "network", "connection", "ac",
+      "air conditioner", "cooler", "heater", "shock", "spark", "sparking",
+      "short circuit", "fuse", "mcb", "current", "voltage", "charging point",
+      "inverter", "tube", "flicker", "flickering"
+    ],
+    Carpenter: [
+      "chair", "chairs", "table", "tables", "bed", "beds", "mattress", "cupboard",
+      "wardrobe", "almirah", "shelf", "shelves", "desk", "lock", "locks", "door",
+      "doors", "window", "windows", "wall", "walls", "ceiling", "crack", "cracks",
+      "roof", "floor", "flooring", "paint", "peeling", "plaster", "hinge", "hinges",
+      "handle", "curtain", "curtains", "furniture", "broken chair", "broken table",
+      "study table", "loose", "termite", "woodwork"
+    ],
+    Mess: [
+      "food", "mess", "dining", "canteen", "meal", "meals", "breakfast", "lunch",
+      "dinner", "kitchen", "hygiene", "unhygienic", "cockroach", "insect", "insects",
+      "fly", "flies", "spoiled", "stale", "chef", "cook", "menu", "quantity",
+      "taste", "tasteless", "cold food", "raw", "undercooked", "dirty utensils",
+      "plate", "plates", "canteen staff", "mess committee", "water in mess"
+    ],
   };
 
-  const HIGH_URGENCY = ["urgent", "emergency", "danger", "dangerous", "fire", "shock", "spark", "flooding", "flood", "safety", "smoke", "broken lock", "gas", "food poisoning"];
-  const MEDIUM_URGENCY = ["not working", "broken", "repair", "problem", "issue", "damaged", "stuck"];
+  const HIGH_URGENCY = [
+    "urgent", "emergency", "danger", "dangerous", "fire", "shock", "spark",
+    "sparking", "flooding", "flood", "safety", "smoke", "broken lock", "gas",
+    "food poisoning", "short circuit", "electrocut", "collapse", "unsafe",
+    "intruder", "stranger", "security threat"
+  ];
+  const MEDIUM_URGENCY = [
+    "not working", "broken", "repair", "problem", "issue", "damaged", "stuck",
+    "malfunction", "leaking", "overflow", "no water", "no power", "blocked"
+  ];
 
   const IMAGE_CATEGORY_HINTS = {
     Plumber: ["toilet", "seat", "wash basin", "washbasin", "sink", "tub", "bathtub", "shower", "faucet", "pipe", "plunger", "drain"],
@@ -28,6 +63,7 @@
   function scoreCategory(text) {
     const scores = {};
     let total = 0;
+
     Object.keys(CATEGORY_KEYWORDS).forEach((cat) => {
       let hits = 0;
       CATEGORY_KEYWORDS[cat].forEach((kw) => {
@@ -36,14 +72,22 @@
       scores[cat] = hits;
       total += hits;
     });
+
+    // Pick the best match by hit ratio relative to that category's keyword
+    // list size, not raw hit count — otherwise a category with a longer
+    // keyword list wins ties unfairly just because it has more entries.
     let best = "General";
-    let bestScore = 0;
+    let bestRatio = 0;
     Object.keys(scores).forEach((cat) => {
-      if (scores[cat] > bestScore) {
+      if (scores[cat] === 0) return;
+      const ratio = scores[cat] / CATEGORY_KEYWORDS[cat].length;
+      if (ratio > bestRatio || (ratio === bestRatio && scores[cat] > (scores[best] || 0))) {
         best = cat;
-        bestScore = scores[cat];
+        bestRatio = ratio;
       }
     });
+
+    const bestScore = scores[best] || 0;
     const confidence = total > 0 ? Math.min(0.6 + (bestScore / Math.max(total, 1)) * 0.35, 0.97) : 0.55;
     return { category: best, confidence };
   }
