@@ -54,11 +54,39 @@
   ];
 
   const IMAGE_CATEGORY_HINTS = {
-    Plumber: ["toilet", "seat", "wash basin", "washbasin", "sink", "tub", "bathtub", "shower", "faucet", "pipe", "plunger", "drain"],
-    Electrician: ["switch", "socket", "plug", "power", "electric", "space heater", "fan", "lamp", "light", "bulb", "television", "router", "modem", "wire"],
-    Carpenter: ["chair", "desk", "table", "wardrobe", "cabinet", "shelf", "bed", "four-poster", "cradle", "rocking chair", "file", "bookcase", "door", "window", "lock", "wall clock"],
-    Mess: ["plate", "tray", "dining table", "food", "meal", "bowl", "cup", "spoon", "fork", "refrigerator", "microwave", "stove", "frying pan", "pot"],
+    Plumber: [
+      "toilet seat", "toilet", "wash basin", "washbasin", "hand basin", "sink",
+      "tub", "bathtub", "shower curtain", "shower", "faucet", "water jug",
+      "water bottle", "pipe", "plunger", "drain", "soap dispenser", "bucket"
+    ],
+    Electrician: [
+      "space heater", "table lamp", "desk lamp", "lamp", "switch", "socket",
+      "plug", "power drill", "electric fan", "fan", "light bulb", "bulb",
+      "television", "monitor", "desktop computer", "cellular telephone",
+      "router", "modem", "extension cord", "wire", "electric", "power"
+    ],
+    Carpenter: [
+      "four-poster", "studio couch", "rocking chair", "folding chair", "chair",
+      "desk", "wardrobe", "cabinet", "china cabinet", "bookcase", "chest",
+      "file", "wall clock", "window shade", "sliding door", "door", "window",
+      "lock", "bed", "table"
+    ],
+    Mess: [
+      "dining table", "plate", "tray", "food", "meal", "bowl", "cup", "spoon",
+      "fork", "refrigerator", "microwave", "stove", "frying pan", "wok", "pot",
+      "soup bowl", "coffee mug"
+    ],
   };
+
+  // Sort keyword/category pairs by keyword length (longest first) so a
+  // specific phrase like "dining table" is checked before a generic word
+  // like "table" that would otherwise shadow it and pick the wrong category.
+  const SORTED_HINT_PAIRS = Object.keys(IMAGE_CATEGORY_HINTS)
+    .reduce((pairs, cat) => {
+      IMAGE_CATEGORY_HINTS[cat].forEach((kw) => pairs.push({ kw, cat }));
+      return pairs;
+    }, [])
+    .sort((a, b) => b.kw.length - a.kw.length);
 
   function scoreCategory(text) {
     const scores = {};
@@ -114,11 +142,24 @@
   // keyword matches, rather than forcing a wrong guess.
   function hintFromImageLabel(label) {
     const lower = (label || "").toLowerCase();
-    for (const cat of Object.keys(IMAGE_CATEGORY_HINTS)) {
-      if (IMAGE_CATEGORY_HINTS[cat].some((kw) => lower.includes(kw))) return cat;
+    for (const pair of SORTED_HINT_PAIRS) {
+      if (lower.includes(pair.kw)) return pair.cat;
     }
     return null;
   }
 
-  global.Classifier = { classify, hintFromImageLabel };
+  // MobileNet's top guess is sometimes an unrelated ImageNet class (e.g. a
+  // tap photographed at an odd angle might come back as "table"). Since the
+  // model actually returns several ranked guesses, check each in order and
+  // use the first one that maps to a category we recognise, rather than
+  // blindly trusting rank #1.
+  function hintFromLabels(labels) {
+    for (let i = 0; i < labels.length; i++) {
+      const hint = hintFromImageLabel(labels[i]);
+      if (hint) return { hint, label: labels[i], index: i };
+    }
+    return { hint: null, label: labels[0] || "", index: 0 };
+  }
+
+  global.Classifier = { classify, hintFromImageLabel, hintFromLabels };
 })(window);
