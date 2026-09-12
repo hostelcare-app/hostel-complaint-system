@@ -113,7 +113,10 @@
           "</div>";
         html += "</div>";
         html += '<div class="field"><label for="notesInput">Resolution notes</label><textarea id="notesInput" placeholder="What was done to fix this?">' + Layout.escapeHtml(complaint.resolutionNotes || "") + "</textarea></div>";
+        html += '<div class="field-row" style="align-items:center;">';
         html += '<button type="submit" class="btn btn-primary">Save changes</button>';
+        html += '<button type="button" id="deleteBtn" class="btn btn-danger-text" style="margin-left:auto;">Delete ticket</button>';
+        html += "</div>";
         html += "</form>";
       }
 
@@ -135,6 +138,13 @@
           }
           Store.updateComplaint(complaint.id, patch);
           window.location.href = "complaint.html?id=" + complaint.id;
+        });
+
+        document.getElementById("deleteBtn").addEventListener("click", function () {
+          if (window.confirm("Delete ticket " + complaint.ticketNo + "? This can't be undone.")) {
+            Store.deleteComplaint(complaint.id);
+            window.location.href = "dashboard.html";
+          }
         });
       }
     }
