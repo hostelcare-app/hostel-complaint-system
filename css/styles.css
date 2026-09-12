@@ -343,6 +343,13 @@ ul{ margin:0; padding:0; }
 .unauthorized{ text-align:center; padding: 3em 1em; }
 
 /* ============================================================
+   Feedback / star rating
+   ============================================================ */
+.star-picker{ font-size: 1.9rem; line-height:1; }
+.star-picker .star{ cursor:pointer; color: var(--amber); margin-right: 0.15em; user-select:none; }
+.star-display{ font-size: 1.5rem; color: var(--amber); line-height:1; }
+
+/* ============================================================
    Responsive
    ============================================================ */
 @media (max-width: 880px){
