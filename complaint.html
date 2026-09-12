@@ -96,6 +96,30 @@
         html += '<hr class="divider"><h3 style="font-size:1rem;margin-bottom:0.3em;">Resolution</h3>';
         html += '<p class="field-hint" style="margin-bottom:0.5em;">Resolved on ' + formatDate(complaint.resolvedAt) + "</p>";
         html += '<p class="description-block">' + Layout.escapeHtml(complaint.resolutionNotes || "No notes were added.") + "</p>";
+
+        // Feedback: students rate how the resolution went; admins just see it.
+        if (!isAdmin) {
+          if (complaint.rating) {
+            html += '<hr class="divider"><h3 style="font-size:1rem;margin-bottom:0.5em;">Your feedback</h3>';
+            html += '<div class="star-display">' + "★".repeat(complaint.rating) + "☆".repeat(5 - complaint.rating) + "</div>";
+            if (complaint.feedbackComment) {
+              html += '<p class="description-block" style="margin-top:0.5em;">' + Layout.escapeHtml(complaint.feedbackComment) + "</p>";
+            }
+          } else {
+            html += '<hr class="divider"><h3 style="font-size:1rem;margin-bottom:0.5em;">Rate this resolution</h3>';
+            html += '<div id="starPicker" class="star-picker">' +
+              [1, 2, 3, 4, 5].map((n) => '<span class="star" data-value="' + n + '">☆</span>').join("") +
+              "</div>";
+            html += '<div class="field" style="margin-top:0.8em;"><textarea id="feedbackComment" placeholder="Anything you\'d like to add (optional)"></textarea></div>';
+            html += '<button type="button" id="submitFeedbackBtn" class="btn btn-primary" disabled>Submit feedback</button>';
+          }
+        } else if (complaint.rating) {
+          html += '<hr class="divider"><h3 style="font-size:1rem;margin-bottom:0.5em;">Student feedback</h3>';
+          html += '<div class="star-display">' + "★".repeat(complaint.rating) + "☆".repeat(5 - complaint.rating) + "</div>";
+          if (complaint.feedbackComment) {
+            html += '<p class="description-block" style="margin-top:0.5em;">' + Layout.escapeHtml(complaint.feedbackComment) + "</p>";
+          }
+        }
       }
 
       if (isAdmin) {
@@ -145,6 +169,34 @@
             Store.deleteComplaint(complaint.id);
             window.location.href = "dashboard.html";
           }
+        });
+      }
+
+      const starPicker = document.getElementById("starPicker");
+      if (starPicker) {
+        let selectedRating = 0;
+        const stars = starPicker.querySelectorAll(".star");
+        const submitBtn = document.getElementById("submitFeedbackBtn");
+
+        function paintStars(value) {
+          stars.forEach(function (s) {
+            s.textContent = Number(s.dataset.value) <= value ? "★" : "☆";
+          });
+        }
+
+        stars.forEach(function (s) {
+          s.addEventListener("click", function () {
+            selectedRating = Number(s.dataset.value);
+            paintStars(selectedRating);
+            submitBtn.disabled = false;
+          });
+        });
+
+        submitBtn.addEventListener("click", function () {
+          if (!selectedRating) return;
+          const comment = document.getElementById("feedbackComment").value.trim();
+          Store.submitFeedback(complaint.id, selectedRating, comment);
+          window.location.href = "complaint.html?id=" + complaint.id;
         });
       }
     }
