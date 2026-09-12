@@ -14,8 +14,23 @@
     "Ramesh Yadav — Plumbing",
     "Suresh Singh — Electrical",
     "Mahesh Verma — Carpentry",
+    "Sunita Devi — Mess Supervisor",
     "General Maintenance Staff",
   ];
+
+  // Maps a complaint category to the worker best suited to handle it.
+  // Used to auto-suggest an assignee on the admin ticket view.
+  const CATEGORY_WORKER_MAP = {
+    Plumber: "Ramesh Yadav — Plumbing",
+    Electrician: "Suresh Singh — Electrical",
+    Carpenter: "Mahesh Verma — Carpentry",
+    Mess: "Sunita Devi — Mess Supervisor",
+    General: "General Maintenance Staff",
+  };
+
+  function suggestWorkerForCategory(category) {
+    return CATEGORY_WORKER_MAP[category] || "General Maintenance Staff";
+  }
 
   function read(key, fallback) {
     try {
@@ -122,6 +137,12 @@
     saveComplaints(list);
     return list[idx];
   }
+  function deleteComplaint(id) {
+    const list = getComplaints();
+    const filtered = list.filter((c) => c.id !== Number(id));
+    saveComplaints(filtered);
+    return filtered.length !== list.length;
+  }
 
   function getSession() {
     return read(SESSION_KEY, null);
@@ -148,6 +169,8 @@
     getComplaintById,
     addComplaint,
     updateComplaint,
+    deleteComplaint,
+    suggestWorkerForCategory,
     getSession,
     setSession,
     clearSession,
