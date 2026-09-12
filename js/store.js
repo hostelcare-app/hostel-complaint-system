@@ -143,6 +143,13 @@
     saveComplaints(filtered);
     return filtered.length !== list.length;
   }
+  function submitFeedback(id, rating, comment) {
+    return updateComplaint(id, {
+      rating: Number(rating),
+      feedbackComment: comment || "",
+      feedbackAt: new Date().toISOString(),
+    });
+  }
 
   function getSession() {
     return read(SESSION_KEY, null);
@@ -170,6 +177,7 @@
     addComplaint,
     updateComplaint,
     deleteComplaint,
+    submitFeedback,
     suggestWorkerForCategory,
     getSession,
     setSession,
