@@ -1,72 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Submit a complaint · Hostel Care</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
-<div class="app-shell">
-  <nav class="sidebar" id="sidebar"></nav>
-  <main class="main">
-    <div class="main-header">
-      <div>
-        <h1>Submit a complaint</h1>
-        <p>Describe the issue in your own words — category and priority are detected for you.</p>
-      </div>
-    </div>
+/*
+  Hostel Care — Gemini-based photo classifier
+  Calls Google's Gemini vision model directly from the browser (no backend
+  needed, since this project is a static site) to figure out what a photo
+  actually shows, and sort it into one of our maintenance categories.
 
-    <div class="panel form-card">
-      <div class="panel-body">
-        <div id="formBanner"></div>
-        <form id="complaintForm" novalidate>
-          <div class="field">
-            <label for="title">Title</label>
-            <input type="text" id="title" placeholder="Short summary, e.g. Leaking tap in room bathroom" required>
-          </div>
-          <div class="field">
-            <label for="description">Description</label>
-            <textarea id="description" placeholder="What's happening, since when, and anything the maintenance team should know." required></textarea>
-          </div>
-          <div class="field">
-            <label for="photo">Photo (optional)</label>
-            <input type="file" id="photo" accept="image/*">
-            <img id="photoPreview" class="photo-preview" alt="Selected photo preview">
-            <div id="visionStatus" class="vision-status"></div>
-          </div>
-          <button type="submit" class="btn btn-primary">Submit complaint</button>
-        </form>
-        <div class="ai-note">
-          <span aria-hidden="true">🤖</span>
-          <div>Hostel Care reads your description (and photo, if you add one) to sort the issue into a category — Plumber, Electrician, Carpenter, Mess, or General — and flag how urgent it is.</div>
-        </div>
-      </div>
-    </div>
-  </main>
-</div>
+  IMPORTANT — API key exposure:
+  Because there's no server here to hide the key, it's visible to anyone
+  who views the page source. For a college project demo this is a common
+  and accepted trade-off, but it is NOT safe for a real product. If you
+  keep this key long-term, restrict it in Google AI Studio / Google Cloud
+  Console to only work from your GitHub Pages domain (HTTP referrer
+  restriction), so it can't be copied and used elsewhere.
+*/
+(function (global) {
+  // TODO: paste your own key here (see aistudio.google.com/apikey).
+     const GEMINI_API_KEY = "AIzaSyDa3BqIC7jEeZ2ZlDTaVZLBIPff45RWMC0";
 
-<script src="js/store.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/layout.js"></script>
-<script src="js/classifier.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
-<script>
-  Store.seedIfEmpty();
-  const user = Layout.mount("submit");
+  // Free-tier eligible as of 2026. If this ever stops working, check
+  // https://ai.google.dev/gemini-api/docs/models for the current
+  // recommended flash-tier model name.
+  const GEMINI_MODEL = "gemini-2.5-flash";
 
-  let photoDataUrl = "";
-  let photoLabel = "";
-  let photoConfidence = 0;
-  let visionModelPromise = null;
-
-  function getVisionModel() {
-    if (!visionModelPromise) visionModelPromise = mobilenet.load();
-    return visionModelPromise;
-  }
+  const VALID_CATEGORIES = ["Plumber", "Electrician", "Carpenter", "Mess", "General"];
+  const VALID_PRIORITIES = ["low", "medium", "high"];
 
   function resizeImageFile(file, maxDim, quality) {
     return new Promise(function (resolve, reject) {
@@ -97,63 +53,78 @@
     });
   }
 
-  if (user && user.role === "admin") {
-    window.location.href = "dashboard.html";
-  } else if (user) {
-    document.getElementById("photo").addEventListener("change", async function (e) {
-      const file = e.target.files[0];
-      const status = document.getElementById("visionStatus");
-      const preview = document.getElementById("photoPreview");
-      if (!file) return;
-
-      status.textContent = "Analyzing photo…";
-      try {
-        const resized = await resizeImageFile(file, 480, 0.7);
-        photoDataUrl = resized.dataUrl;
-        preview.src = photoDataUrl;
-        preview.style.display = "block";
-
-        const model = await getVisionModel();
-        const predictions = await model.classify(resized.canvas);
-        if (predictions && predictions[0]) {
-          const top = predictions[0];
-          photoLabel = top.className.split(",")[0];
-          photoConfidence = Math.round(top.probability * 100);
-          const hint = Classifier.hintFromImageLabel(photoLabel);
-          status.textContent = "🤖 Photo suggests: " + photoLabel + " (" + photoConfidence + "% match)" +
-            (hint ? " — looks like a " + hint + " issue" : "");
-        } else {
-          status.textContent = "";
-        }
-      } catch (err) {
-        status.textContent = "Couldn't analyze the photo (offline?) — it'll still be attached when you submit.";
-      }
-    });
-
-    document.getElementById("complaintForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-      const title = document.getElementById("title").value.trim();
-      const description = document.getElementById("description").value.trim();
-      const banner = document.getElementById("formBanner");
-      if (!title || !description) {
-        banner.innerHTML = '<div class="form-banner error">Please add both a title and a description.</div>';
-        return;
-      }
-      const result = Classifier.classify(title, description);
-      const complaint = Store.addComplaint({
-        userId: user.id,
-        title: title,
-        description: description,
-        category: result.category,
-        priority: result.priority,
-        confidence: result.confidence,
-        photo: photoDataUrl,
-        photoLabel: photoLabel,
-        photoConfidence: photoConfidence,
-      });
-      window.location.href = "complaint.html?id=" + complaint.id + "&submitted=1";
-    });
+  // "data:image/jpeg;base64,/9j/4AAQ..." -> "/9j/4AAQ..."
+  function stripDataUrlPrefix(dataUrl) {
+    const commaIndex = dataUrl.indexOf(",");
+    return commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl;
   }
-</script>
-</body>
-</html>
+
+  // Sends the complaint text + photo to Gemini together, so it can use the
+  // actual photo as evidence (e.g. "this is a tap", "this is a wifi
+  // router") instead of being limited to a fixed list of labels.
+  // Returns {category, priority, confidence} on success, or null on any
+  // failure (missing key, no internet, bad response) so the caller can
+  // fall back to the local text-only classifier.
+  async function classify(title, description, photoBase64) {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.indexOf("PASTE_YOUR") === 0) {
+      console.warn("Gemini API key not set — falling back to local classifier.");
+      return null;
+    }
+    try {
+      const prompt =
+        "You are sorting a hostel maintenance complaint into exactly one " +
+        "category: Plumber, Electrician, Carpenter, Mess, or General. " +
+        "Also pick an urgency: low, medium, or high.\n" +
+        "Title: " + title + "\n" +
+        "Description: " + description + "\n" +
+        "Use the attached photo as the main evidence for what the object " +
+        "or issue actually is (e.g. a tap, a wifi router, a broken chair, " +
+        "spoiled food), and use the text for context.\n" +
+        'Reply with ONLY a JSON object, no markdown formatting, in exactly ' +
+        'this shape: {"category": "...", "priority": "...", "confidence": 0-100}';
+
+      const parts = [{ text: prompt }];
+      if (photoBase64) {
+        parts.push({ inline_data: { mime_type: "image/jpeg", data: photoBase64 } });
+      }
+
+      const url =
+        "https://generativelanguage.googleapis.com/v1beta/models/" +
+        GEMINI_MODEL + ":generateContent?key=" + GEMINI_API_KEY;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: parts }] }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Gemini request failed with status " + response.status);
+      }
+
+      const data = await response.json();
+      let text = (data.candidates && data.candidates[0] &&
+        data.candidates[0].content && data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0] &&
+        data.candidates[0].content.parts[0].text) || "";
+      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+      const parsed = JSON.parse(text);
+      if (VALID_CATEGORIES.indexOf(parsed.category) === -1) return null;
+
+      let priority = parsed.priority;
+      if (VALID_PRIORITIES.indexOf(priority) === -1) priority = "medium";
+
+      let confidence = Number(parsed.confidence);
+      if (isNaN(confidence)) confidence = 70;
+      confidence = Math.max(0, Math.min(confidence, 100));
+
+      return { category: parsed.category, priority: priority, confidence: Math.round(confidence) };
+    } catch (err) {
+      console.warn("Gemini classification failed, falling back to local classifier:", err);
+      return null;
+    }
+  }
+
+  global.GeminiVision = { classify, resizeImageFile, stripDataUrlPrefix };
+})(window);
